@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pose Detection Web Application</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose"></script>
+</head>
+<body>
+    <h1>Pose Detection</h1>
+    <p>Welcome to the Pose Detection Web Application</p>
+    <button id="startButton">Start Pose Detection</button>
+    <button id="stopButton">Stop Pose Detection</button>
+    
+    <!-- Video container -->
+    <div id="videoContainer">
+        <video id="videoElement" autoplay></video>
+        <canvas id="canvasElement"></canvas>
+    </div>
+
+    <script>
+        document.getElementById("startButton").addEventListener("click", function() {
+            fetch('/start_pose_detection')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to start pose detection');
+                }
+                // Update UI or handle success
+            })
+            .catch(error => console.error('Error starting pose detection:', error));
+        });
+
+        document.getElementById("stopButton").addEventListener("click", function() {
+            fetch('/stop_pose_detection')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to stop pose detection');
+                }
+                // Update UI or handle success
+            })
+            .catch(error => console.error('Error stopping pose detection:', error));
+        });
+
+        const video = document.getElementById('videoElement');
+        const canvas = document.getElementById('canvasElement');
+        const context = canvas.getContext('2d');
+        const pose = new Pose({
+            locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+            }
+        });
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+                video.play();
+                const videoWidth = video.videoWidth;
+                const videoHeight = video.videoHeight;
+                video.width = videoWidth;
+                video.height = videoHeight;
+                canvas.width = videoWidth;
+                canvas.height = videoHeight;
+                pose.onResults((results) => {
+                    context.clearRect(0, 0, videoWidth, videoHeight);
+                    context.drawImage(video, 0, 0, videoWidth, videoHeight);
+                    if (results.poseLandmarks) {
+                        results.poseLandmarks.forEach(landmark => {
+                            const x = landmark.x * videoWidth;
+                            const y = landmark.y * videoHeight;
+                            context.beginPath();
+                            context.arc(x, y, 5, 0, 2 * Math.PI);
+                            context.fillStyle = 'red';
+                            context.fill();
+                        });
+                    }
+                });
+                pose.start(video);
+            };
+        })
+        .catch(error => {
+            console.error('Error accessing webcam:', error);
+        });
+    </script>
+</body>
+</html>
